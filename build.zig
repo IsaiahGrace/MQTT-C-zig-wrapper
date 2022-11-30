@@ -4,6 +4,25 @@
 const std = @import("std");
 
 pub fn build(b: *std.build.Builder) !void {
+    const mode = b.standardReleaseOptions();
+
+    const zig_example = b.addExecutable("zig_subscribe", "examples/subscribe.zig");
+    zig_example.addPackagePath("mqtt", "src/mqtt.zig");
+    zig_example.addIncludeDir("include");
+    zig_example.addCSourceFile("src/mqtt.c", &[_][]const u8{});
+    zig_example.linkLibC();
+    zig_example.setBuildMode(mode);
+    zig_example.install();
+
+    const run_cmd = zig_example.run();
+    run_cmd.step.dependOn(b.getInstallStep());
+    if (b.args) |args| {
+        run_cmd.addArgs(args);
+    }
+
+    const run_step = b.step("run", "Run the app");
+    run_step.dependOn(&run_cmd.step);
+
     const windows = b.addStaticLibrary("mqtt-c", null);
     try includeCommon(windows);
     windows.setTarget(std.zig.CrossTarget{
@@ -63,8 +82,8 @@ pub fn build(b: *std.build.Builder) !void {
 fn includeCommon(lib: *std.build.LibExeObjStep) !void {
     lib.addIncludeDir("include");
 
-    lib.addCSourceFile("src/mqtt.c", &[_][]const u8 {});
-    lib.addCSourceFile("src/mqtt_pal.c", &[_][]const u8 {});
+    lib.addCSourceFile("src/mqtt.c", &[_][]const u8{});
+    lib.addCSourceFile("src/mqtt_pal.c", &[_][]const u8{});
 
     lib.setBuildMode(.Debug); // Can be .Debug, .ReleaseSafe, .ReleaseFast, and .ReleaseSmall
     lib.linkLibC();
